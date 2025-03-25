@@ -1,5 +1,5 @@
 [package]
-name = "rust-net"
+name = "rust-ws"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,6 +10,5 @@ tokio = { version = "1.44.1", features = ["full"] }
 tokio-tungstenite = "0.26.2"
 futures-util = "0.3.31"
 tokio-stream = "0.1.17"
-
 
 

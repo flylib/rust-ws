@@ -366,7 +366,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-net"
+name = "rust-ws"
 version = "0.1.0"
 dependencies = [
  "futures-util",
