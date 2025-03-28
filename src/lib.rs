@@ -53,12 +53,12 @@ impl WebSocketServer {
                 println!("Received: {} from {}", text, addr);
 
                 // 发送消息到队列
-                if let Err(_) = tx_handler.send(text.clone()).await {
+                if let Err(_) = tx_handler.send(text.clone().parse().unwrap()).await {
                     println!("Message queue full, dropping message.");
                 }
 
                 // 回显消息
-                let _ = write.send(Message::Text(format!("Echo: {}", text))).await;
+                let _ = write.send(Message::Text(text)).await;
             }
         }
 
