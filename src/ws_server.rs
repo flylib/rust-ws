@@ -25,7 +25,7 @@ impl WebSocketServer {
         println!("WebSocket Server running at ws://{}", self.address);
 
         tokio::select! {
-            _ = Self::accept_connections(listener, tx_handler) => {},
+                _ = Self::accept_connections(listener, tx_handler) => {},
             _ = shutdown => {
                 println!("Shutting down WebSocket server...");
             }
