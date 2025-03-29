@@ -2,6 +2,7 @@ use crate::ws_conn::WebSocketConnection;
 use crate::ConnectionMap;
 use crate::{create_connection_map, Connection};
 use futures_util::{SinkExt, StreamExt};
+use std::sync::{Arc, Mutex};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, oneshot};
 use tokio_tungstenite::accept_async;
@@ -11,7 +12,7 @@ use tokio_tungstenite::tungstenite::Message;
 /// WebSocket 服务器结构体
 pub struct WebSocketServer {
     address: String,
-    conns: ConnectionMap, // 连接映射
+    connections: ConnectionMap, // 连接映射
 }
 
 impl WebSocketServer {
@@ -19,7 +20,7 @@ impl WebSocketServer {
     pub fn new(address: &str) -> Self {
         Self {
             address: address.to_string(),
-            conns: create_connection_map(),
+            connections: create_connection_map(),
         }
     }
 

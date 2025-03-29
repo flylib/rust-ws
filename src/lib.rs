@@ -17,7 +17,7 @@ pub async fn message_handler(mut rx: mpsc::Receiver<String>) {
     }
 }
 
-pub type ConnectionMap = Arc<Mutex<HashMap<u64, Box<dyn Connection + Send>>>>;
+pub type ConnectionMap = Arc<Mutex<HashMap<u64, Box<dyn Connection>>>>;
 
 pub fn create_connection_map() -> ConnectionMap {
     Arc::new(Mutex::new(HashMap::new()))
