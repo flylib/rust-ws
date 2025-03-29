@@ -1,3 +1,6 @@
+use crate::ws_conn::WebSocketConnection;
+use crate::ConnectionMap;
+use crate::{create_connection_map, Connection};
 use futures_util::{SinkExt, StreamExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, oneshot};
@@ -8,6 +11,7 @@ use tokio_tungstenite::tungstenite::Message;
 /// WebSocket 服务器结构体
 pub struct WebSocketServer {
     address: String,
+    conns: ConnectionMap, // 连接映射
 }
 
 impl WebSocketServer {
@@ -15,6 +19,7 @@ impl WebSocketServer {
     pub fn new(address: &str) -> Self {
         Self {
             address: address.to_string(),
+            conns: create_connection_map(),
         }
     }
 
@@ -41,12 +46,16 @@ impl WebSocketServer {
     }
 
     /// 处理每个 WebSocket 连接
-    async fn handle_connection(stream: TcpStream, tx_handler: mpsc::Sender<String>) {
+    async fn handle_connection(&mut self, stream: TcpStream, tx_handler: mpsc::Sender<String>) {
         let addr = stream.peer_addr().expect("Failed to get peer address");
         let ws_stream = accept_async(stream).await.expect("Failed to accept WebSocket");
         println!("New connection: {}", addr);
 
         let (mut write, mut read) = ws_stream.split();
+
+        let mut new_conn = WebSocketConnection::new(addr.to_string(), write);
+
+        self.add_connection(0, new_conn);
 
         while let Some(Ok(msg)) = read.next().await {
             match msg {
@@ -60,16 +69,31 @@ impl WebSocketServer {
                 Message::Ping(_) => {}
                 _ => {}
             }
-
-            if let Message::Text(text) = msg {
-                println!("Received: {} from {}", text, addr);
-
-
-                // 回显消息
-                let _ = write.send(Message::Text(text)).await;
-            }
+            // if let Message::Text(text) = msg {
+            //     println!("Received: {} from {}", text, addr);
+            //     // 回显消息
+            //     let _ = write.send(Message::Text(text)).await;
+            // }
         }
 
         println!("Connection closed: {}", addr);
+    }
+
+
+    // 获取连接映射的引用
+    pub fn get_connections(&self) -> Arc<Mutex<HashMap<u64, Box<dyn Connection + Send>>>> {
+        self.connections.clone()
+    }
+
+    // 添加新的连接
+    pub async fn add_connection(&self, id: u64, conn: Box<dyn Connection + Send>) {
+        let mut connections = self.connections.lock().await;
+        connections.insert(id, conn);
+    }
+
+    // 移除连接
+    pub async fn remove_connection(&self, id: u64) {
+        let mut connections = self.connections.lock().await;
+        connections.remove(&id);
     }
 }
