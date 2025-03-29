@@ -49,13 +49,21 @@ impl WebSocketServer {
         let (mut write, mut read) = ws_stream.split();
 
         while let Some(Ok(msg)) = read.next().await {
+            match msg {
+                Message::Text(text) => {
+                    // 发送消息到队列
+                    if let Err(_) = tx_handler.send(text.parse().unwrap()).await {
+                        println!("Message queue full, dropping message.");
+                    }
+                }
+                Message::Binary(text) => {}
+                Message::Ping(_) => {}
+                _ => {}
+            }
+
             if let Message::Text(text) = msg {
                 println!("Received: {} from {}", text, addr);
 
-                // 发送消息到队列
-                if let Err(_) = tx_handler.send(text.clone().parse().unwrap()).await {
-                    println!("Message queue full, dropping message.");
-                }
 
                 // 回显消息
                 let _ = write.send(Message::Text(text)).await;

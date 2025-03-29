@@ -1,4 +1,5 @@
 mod ws_server;
+mod ws_conn;
 
 // 重新导出 WebSocketServer 结构体
 pub use ws_server::WebSocketServer;
@@ -12,4 +13,13 @@ pub async fn message_handler(mut rx: mpsc::Receiver<String>) {
         println!("Processing message: {}", msg);
         // 可以在这里进行数据库存储或其他业务逻辑处理
     }
+}
+
+
+trait Connection {
+    //同步发送
+    fn sync_send(&mut self, msg: String);
+
+    //异步发送
+    async fn async_send(&mut self, msg: String);
 }
