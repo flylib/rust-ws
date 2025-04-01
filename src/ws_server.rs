@@ -9,6 +9,7 @@ use tokio_tungstenite::accept_async;
 use tokio_tungstenite::tungstenite::Message;
 
 /// WebSocket 服务器结构体
+#[derive(Clone)]
 pub struct WebSocketServer {
     address: String,
     connections: Arc<Mutex<HashMap<u64, WebSocketConnection>>>, // 连接映射
@@ -42,11 +43,10 @@ impl WebSocketServer {
     /// 处理 WebSocket 连接
     async fn accept_connections(&self, listener: TcpListener, tx_handler: mpsc::Sender<String>) {
         while let Ok((stream, _)) = listener.accept().await {
-            let server = Arc::clone(&self); // 克隆 Arc 以便传递到 spawn 中
-            let tx_handler = tx_handler.clone(); // 克隆 tx_handler
-
+            let tx_handler = tx_handler.clone();
+            let cloned_self = self.clone(); // Clone the struct
             tokio::spawn(async move {
-                server.handle_connection(stream, tx_handler).await;
+                cloned_self.handle_connection(stream, tx_handler).await;
             });
         }
     }
