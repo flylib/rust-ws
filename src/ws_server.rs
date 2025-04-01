@@ -1,9 +1,9 @@
 use crate::ws_conn::WebSocketConnection;
-use crate::{create_connection_map, Connection};
 use futures_util::{SinkExt, StreamExt};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::Mutex;
 use tokio::sync::{mpsc, oneshot};
 use tokio_tungstenite::accept_async;
 use tokio_tungstenite::tungstenite::Message;
@@ -19,7 +19,7 @@ impl WebSocketServer {
     pub fn new(address: &str) -> Self {
         Self {
             address: address.to_string(),
-            connections: create_connection_map(),
+            connections: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -42,8 +42,12 @@ impl WebSocketServer {
     /// 处理 WebSocket 连接
     async fn accept_connections(&self, listener: TcpListener, tx_handler: mpsc::Sender<String>) {
         while let Ok((stream, _)) = listener.accept().await {
-            let tx_handler = tx_handler.clone();
-            tokio::spawn(self.handle_connection(stream, tx_handler));
+            let server = Arc::clone(&self); // 克隆 Arc 以便传递到 spawn 中
+            let tx_handler = tx_handler.clone(); // 克隆 tx_handler
+
+            tokio::spawn(async move {
+                server.handle_connection(stream, tx_handler).await;
+            });
         }
     }
 
@@ -61,7 +65,7 @@ impl WebSocketServer {
 
         let connection_id = new_conn.id;
 
-        self.add_connection(0, Box::new(new_conn)).await;
+        self.add_connection(0, new_conn).await;
 
 
         while let Some(msg) = read.next().await {
@@ -88,12 +92,12 @@ impl WebSocketServer {
     }
 
     // 获取连接映射的引用
-    pub fn get_connections(&self) -> Arc<Mutex<HashMap<u64, Box<dyn Connection + Send>>>> {
+    pub fn get_connections(&self) -> Arc<Mutex<HashMap<u64, WebSocketConnection>>> {
         self.connections.clone()
     }
 
     // 添加新的连接
-    pub async fn add_connection(&self, id: u64, conn: Box<dyn Connection>) {
+    pub async fn add_connection(&self, id: u64, conn: WebSocketConnection) {
         let mut connections = self.connections.lock().await;
         connections.insert(id, conn);
     }

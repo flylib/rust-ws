@@ -1,4 +1,3 @@
-use crate::Connection;
 use futures_util::stream::SplitSink;
 use futures_util::SinkExt;
 use tokio::net::TcpStream;
@@ -17,7 +16,7 @@ impl WebSocketConnection {
     }
 }
 
-impl Connection for WebSocketConnection {
+impl WebSocketConnection {
     // fn sync_send(&mut self, msg: String) -> Result<(), Box<dyn std::error::Error>> {
     //     // Convert to UTF-8 validated message
     //     let utf8_bytes = Utf8Bytes::from(msg);
