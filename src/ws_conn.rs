@@ -6,7 +6,7 @@ use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
 use tokio_tungstenite::WebSocketStream;
 
 pub struct WebSocketConnection {
-    id: u64,
+    pub id: u64,
     addr: String,
     write: SplitSink<WebSocketStream<TcpStream>, Message>,
 }
