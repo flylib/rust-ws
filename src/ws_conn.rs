@@ -11,20 +11,13 @@ pub struct WebSocketConnection {
 }
 
 impl WebSocketConnection {
-    pub fn new(addr: String, write: SplitSink<WebSocketStream<TcpStream>, Message>) -> Self {
-        WebSocketConnection { id: 0, addr, write }
+    pub fn new(id: u64, addr: String, write: SplitSink<WebSocketStream<TcpStream>, Message>) -> Self {
+        WebSocketConnection { id: id, addr, write }
     }
 }
 
 impl WebSocketConnection {
-    // fn sync_send(&mut self, msg: String) -> Result<(), Box<dyn std::error::Error>> {
-    //     // Convert to UTF-8 validated message
-    //     let utf8_bytes = Utf8Bytes::from(msg);
-    //     self.write.send(Message::Text(utf8_bytes.into()))?;
-    //     Ok(())
-    // }
-
-    fn sync_send(&mut self, msg: String) {
+    pub fn sync_send(&mut self, msg: String) {
         // ❌ 不能在同步方法中直接调用 `send`，需要用 `block_in_place`
         tokio::task::block_in_place(|| {
             let utf8_bytes = Utf8Bytes::from(msg);
@@ -33,7 +26,7 @@ impl WebSocketConnection {
     }
 
 
-    async fn async_send(&mut self, msg: String) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn async_send(&mut self, msg: String) -> Result<(), Box<dyn std::error::Error>> {
         let utf8_bytes = Utf8Bytes::from(msg);
         self.write.send(Message::Text(utf8_bytes.into())).await?;
         Ok(())

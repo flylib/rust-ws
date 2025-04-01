@@ -1,6 +1,7 @@
 use crate::ws_conn::WebSocketConnection;
 use futures_util::{SinkExt, StreamExt};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
@@ -9,8 +10,8 @@ use tokio_tungstenite::accept_async;
 use tokio_tungstenite::tungstenite::Message;
 
 /// WebSocket 服务器结构体
-#[derive(Clone)]
 pub struct WebSocketServer {
+    atomic_id: AtomicU64,
     address: String,
     connections: Arc<Mutex<HashMap<u64, WebSocketConnection>>>, // 连接映射
 }
@@ -19,6 +20,7 @@ impl WebSocketServer {
     /// 创建 WebSocket 服务器
     pub fn new(address: &str) -> Self {
         Self {
+            atomic_id: AtomicU64::new(1),
             address: address.to_string(),
             connections: Arc::new(Mutex::new(HashMap::new())),
         }
@@ -44,10 +46,7 @@ impl WebSocketServer {
     async fn accept_connections(&self, listener: TcpListener, tx_handler: mpsc::Sender<String>) {
         while let Ok((stream, _)) = listener.accept().await {
             let tx_handler = tx_handler.clone();
-            let cloned_self = self.clone(); // Clone the struct
-            tokio::spawn(async move {
-                cloned_self.handle_connection(stream, tx_handler).await;
-            });
+            self.handle_connection(stream, tx_handler).await;
         }
     }
 
@@ -61,34 +60,35 @@ impl WebSocketServer {
 
         let (write, mut read) = ws_stream.split();
 
-        let new_conn = WebSocketConnection::new(addr.to_string(), write);
+        self.atomic_id.fetch_add(1, Ordering::Relaxed); // 原子递增
+
+        let new_conn = WebSocketConnection::new(self.get_one_connection_id(), addr.to_string(), write);
 
         let connection_id = new_conn.id;
+        self.add_connection(new_conn).await;
 
-        self.add_connection(0, new_conn).await;
-
-
-        while let Some(msg) = read.next().await {
-            match msg {
-                Ok(Message::Text(text)) => {
-                    // 发送消息到队列
-                    if let Err(_) = tx_handler.send(text.parse().unwrap()).await {
-                        println!("Message queue full, dropping message.");
+        tokio::spawn(async move {
+            while let Some(msg) = read.next().await {
+                match msg {
+                    Ok(Message::Text(text)) => {
+                        // 发送消息到队列
+                        if let Err(_) = tx_handler.send(text.parse().unwrap()).await {
+                            println!("[{}]Message queue full, dropping message.", connection_id);
+                        }
+                    }
+                    Ok(Message::Binary(_)) => {}
+                    Ok(Message::Ping(_)) => {}
+                    Ok(Message::Pong(_)) => {}
+                    Ok(_) => {}
+                    Err(e) => {
+                        eprintln!("Error reading message from {}: {}", addr, e);
+                        // self.remove_connection(connection_id).await;
+                        break;
                     }
                 }
-                Ok(Message::Binary(_)) => {}
-                Ok(Message::Ping(_)) => {}
-                Ok(Message::Pong(_)) => {}
-                Ok(_) => {}
-                Err(e) => {
-                    eprintln!("Error reading message from {}: {}", addr, e);
-                    self.remove_connection(connection_id).await;
-                    break;
-                }
             }
-        }
-
-        println!("Connection closed: {}", addr);
+            println!("Connection closed: {}", addr);
+        });
     }
 
     // 获取连接映射的引用
@@ -97,14 +97,19 @@ impl WebSocketServer {
     }
 
     // 添加新的连接
-    pub async fn add_connection(&self, id: u64, conn: WebSocketConnection) {
+    pub async fn add_connection(&self, conn: WebSocketConnection) {
         let mut connections = self.connections.lock().await;
-        connections.insert(id, conn);
+        connections.insert(conn.id, conn);
     }
 
     // 移除连接
     pub async fn remove_connection(&self, id: u64) {
         let mut connections = self.connections.lock().await;
         connections.remove(&id);
+    }
+
+    pub fn get_one_connection_id(&self) -> u64 {
+        // 既读取旧值，又写入新值，保证 Acquire + Release
+        self.atomic_id.fetch_add(1, Ordering::AcqRel)
     }
 }

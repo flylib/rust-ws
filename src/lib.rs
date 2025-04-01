@@ -14,3 +14,12 @@ pub async fn message_handler(mut rx: mpsc::Receiver<String>) {
         // 可以在这里进行数据库存储或其他业务逻辑处理
     }
 }
+
+
+
+
+pub struct Message{
+    pub id:u64,
+    pub text:String,
+    pub
+}
