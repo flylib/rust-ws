@@ -1,14 +1,35 @@
 [package]
-name = "rust-net"
+name = "sockudo-ws"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "sockudo_ws"
+path = "src/lib.rs"
+
+[[bin]]
+name = "server-demo"
+path = "src/bin/server_demo.rs"
+
+[[bin]]
+name = "client-demo"
+path = "src/bin/client_demo.rs"
 
 [dependencies]
-tokio = { version = "1.34.0", features = ["full"] }
-dashmap = "5.5.3"
-serde_json = { version = "1.0.113", features = [] }
-serde = "1.0.196"
+tokio          = { version = "1",    features = ["full"] }
+tokio-tungstenite = { version = "0.26", features = [] }
+tungstenite    = { version = "0.26" }
+tokio-util     = { version = "0.7",  features = ["rt"] }
+prost          = "0.13"
+bytes          = "1"
+dashmap        = "6"
+uuid           = { version = "1",    features = ["v4"] }
+tracing        = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+anyhow         = "1"
+thiserror      = "2"
+futures-util   = "0.3"
+tokio-stream   = "0.1"
 
-
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }

@@ -1,21 +1,12 @@
-pub mod context;
-pub mod message;
-pub mod transport;
-pub mod session;
-pub mod event;
-pub mod tcp;
+pub mod codec;
+pub mod error;
+pub mod msg_id;
+pub mod proto;
+pub mod server;
+pub mod client;
 
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use error::{Result, WsError};
+pub use server::{ConnId, ServerConfig, ServerEvent, ServerHandle, WsServer};
+// Re-export CancellationToken for convenience
+pub use tokio_util::sync::CancellationToken;
+pub use client::{ClientConfig, Frame, WsClient};
